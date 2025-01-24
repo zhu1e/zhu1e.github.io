@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pattern Creator</title>
+  <style>
+    body {
+      margin: 0; font-family: Arial, sans-serif; background: #000; color: #fff;
+      display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden;
+      padding: 20px; /* Add padding to body */
+      box-sizing: border-box;
+    }
+    .page { 
+      display: none; 
+      flex-direction: column; 
+      align-items: center; 
+      justify-content: center; 
+      width: 100%; 
+      height: 100%; 
+      box-sizing: border-box; 
+      position: relative; /* For back button */
+    }
+    .active { display: flex; }
+    .back-button {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: #fff;
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 20px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    button, label {
+      background: #fff; 
+      color: #000; 
+      border: none; 
+      border-radius: 10px; 
+      padding: 10px 20px; 
+      font-size: 1rem; 
+      cursor: pointer; 
+      margin: 10px;
+    }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    input[type="file"] { display: none; }
+    .preview img { 
+      max-width: 100px; 
+      max-height: 100px; 
+      border-radius: 10px; 
+      cursor: pointer; 
+      margin: 5px; /* Add spacing between preview images */
+    }
+    .preview img.selected { border: 2px solid #40c945; }
+    .tile-cell {
+      border: 1px solid #fff; /* Add border for grid lines on page 3 */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+    .tile-cell img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    #workspace {
+      border: 2px solid #fff; 
+      width: 200px; 
+      height: 200px; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      margin: 20px; /* Add margin around workspace */
+    }
+    #workspace img {
+      max-width: 100%;
+      max-height: 100%;
+    }
+    #pattern-preview {
+      display: grid;
+      gap: 0; /* Remove gap for page 4 */
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      border: none; /* Remove border for preview */
+      margin-top: 20px; /* Add margin above preview */
+    }
+    #pattern-preview .tile-cell {
+      border: none; /* Remove grid lines for preview */
+    }
+    h1, h2 {
+      margin-bottom: 20px; /* Add spacing below headings */
+    }
+    #tile-grid {
+      margin-top: 20px; /* Add spacing above tile grid */
+    }
+  </style>
+</head>
+<body>
+  <div class="page active" id="page-1">
+    <h1>Let's create a pattern!</h1>
+    <button id="start-btn">Start</button>
+  </div>
+
+  <div class="page" id="page-2">
+    <button class="back-button" onclick="showPage(0)">Back</button>
+    <h2>Upload Your Images</h2>
+    <label for="file-input">Choose Files</label>
+    <input type="file" id="file-input" multiple accept="image/*">
+    <div class="preview" id="preview"></div>
+    <button id="next-btn" disabled>Next</button>
+  </div>
+
+  <div class="page" id="page-3">
+    <button class="back-button" onclick="showPage(1)">Back</button>
+    <div>
+      <button id="flip-horizontal">Flip Horizontal</button>
+      <button id="rotate-90">Rotate 90°</button>
+      <button id="return-btn">Return</button>
+      <button id="reset-btn">Reset</button>
+    </div>
+    <div id="workspace">
+      <img id="workspace-image" src="" style="display: none;">
+    </div>
+    <div id="tile-grid" style="display: grid; grid-template-columns: repeat(3, 100px); grid-template-rows: repeat(3, 100px); gap: 2px;">
+      <div class="tile-cell"></div>
+      <div class="tile-cell"></div>
+      <div class="tile-cell"></div>
+      <div class="tile-cell"></div>
+      <div class="tile-cell"></div>
+      <div class="tile-cell"></div>
+      <div class="tile-cell"></div>
+      <div class="tile-cell"></div>
+      <div class="tile-cell"></div>
+    </div>
+    <button id="finish-btn">Finish</button>
+  </div>
+
+  <div class="page" id="page-4">
+    <button class="back-button" onclick="showPage(2)">Back</button>
+    <h2>Preview Your Pattern</h2>
+    <div id="pattern-preview" style="grid-template-columns: repeat(3, 100px); grid-template-rows: repeat(3, 100px); width: 300px; height: 300px;"></div>
+    <button id="save-btn">Save as Image</button>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script>
+    const pages = document.querySelectorAll('.page');
+    let currentPage = 0, selectedImage = null, historyStack = [];
+    const showPage = i => { pages[currentPage].classList.remove('active'); pages[i].classList.add('active'); currentPage = i; };
+
+    document.getElementById('start-btn').onclick = () => showPage(1);
+
+    document.getElementById('file-input').onchange = e => {
+      const preview = document.getElementById('preview');
+      preview.innerHTML = ''; selectedImage = null;
+      [...e.target.files].forEach(file => {
+        const img = new Image(); img.src = URL.createObjectURL(file);
+        img.onclick = () => {
+          document.querySelectorAll('.preview img').forEach(el => el.classList.remove('selected'));
+          img.classList.add('selected'); selectedImage = img.src;
+          document.getElementById('next-btn').disabled = false;
+        };
+        preview.appendChild(img);
+      });
+    };
+
+    document.getElementById('next-btn').onclick = () => {
+      const workspaceImage = document.getElementById('workspace-image');
+      workspaceImage.src = selectedImage; workspaceImage.style.display = 'block'; showPage(2);
+    };
+
+    const workspaceImage = document.getElementById('workspace-image');
+    document.getElementById('flip-horizontal').onclick = () => {
+      workspaceImage.style.transform = workspaceImage.style.transform.includes('scaleX(-1)')
+        ? workspaceImage.style.transform.replace('scaleX(-1)', '') : `${workspaceImage.style.transform} scaleX(-1)`;
+    };
+
+    document.getElementById('rotate-90').onclick = () => {
+      const angle = parseInt((workspaceImage.style.transform.match(/rotate\((\d+)deg\)/) || [0, 0])[1]);
+      workspaceImage.style.transform = workspaceImage.style.transform.replace(/rotate\(\d+deg\)/, '') + ` rotate(${(angle + 90) % 360}deg)`;
+    };
+
+    workspaceImage.ondragstart = e => {
+      e.dataTransfer.setData('src', workspaceImage.src);
+      e.dataTransfer.setData('transform', workspaceImage.style.transform);
+    };
+
+    const tileGrid = document.getElementById('tile-grid');
+    tileGrid.ondragover = e => e.preventDefault();
+    tileGrid.ondrop = e => {
+      e.preventDefault();
+      const cell = e.target.closest('.tile-cell');
+      if (!cell) return;
+      const img = new Image();
+      img.src = e.dataTransfer.getData('src');
+      img.style.transform = e.dataTransfer.getData('transform');
+      cell.innerHTML = ''; cell.appendChild(img);
+      historyStack.push(cell);
+    };
+
+    document.getElementById('return-btn').onclick = () => {
+      const lastCell = historyStack.pop();
+      if (lastCell) lastCell.innerHTML = '';
+    };
+
+    document.getElementById('reset-btn').onclick = () => {
+      document.querySelectorAll('.tile-cell').forEach(cell => (cell.innerHTML = ''));
+      historyStack = [];
+    };
+
+    document.getElementById('finish-btn').onclick = () => {
+      const tileGrid = document.getElementById('tile-grid');
+      const preview = document.getElementById('pattern-preview');
+      preview.innerHTML = tileGrid.innerHTML;
+      preview.style.gridTemplateColumns = tileGrid.style.gridTemplateColumns;
+      preview.style.gridTemplateRows = tileGrid.style.gridTemplateRows;
+      showPage(3);
+    };
+
+    document.getElementById('save-btn').onclick = () => {
+      const preview = document.getElementById('pattern-preview');
+      const originalGap = preview.style.gap; // Store the original gap
+      preview.style.gap = '0'; // Remove the gap for the saved image
+
+      html2canvas(preview, { backgroundColor: null }).then(canvas => {
+        preview.style.gap = originalGap; // Restore the original gap
+        const link = document.createElement('a');
+        link.download = 'pattern.png';
+        link.href = canvas.toDataURL();
+        link.click();
+      });
+    };
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
